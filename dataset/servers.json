@@ -1,0 +1,30 @@
+[
+  {
+    "id": 1,
+    "newText": "Сервер 1",
+    "onlineCount": 1,
+    "description": "Основной и первый сервер.",
+    "serverTag": "S1"
+  },
+  {
+    "id": 2,
+    "newText": "Сервер 2",
+    "onlineCount": 0,
+    "description": "Пока что неактивен.",
+    "serverTag": "S2"
+  },
+  {
+    "id": 3,
+    "newText": "Сервер 3",
+    "onlineCount": 0,
+    "description": "Пока что неактивен.",
+    "serverTag": "S3"
+  },
+  {
+    "id": 4,
+    "newText": "Сервер 4",
+    "onlineCount": 0,
+    "description": "Пока что неактивен.",
+    "serverTag": "S4"
+  }
+]

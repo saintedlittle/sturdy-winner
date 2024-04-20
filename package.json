@@ -4,7 +4,6 @@
   "description": "Express web server for a game application",
   "main": "app.js",
   "bin": "app.js",
-
   "scripts": {
     "start": "node app.js",
     "postinstall": "npm run build"
@@ -24,7 +23,7 @@
     "express": "~4.19.2",
     "http-errors": "~1.6.3",
     "jsdom": "^24.0.0",
-    "morgan": "~1.9.1"
-  },
-
+    "morgan": "~1.9.1",
+    "pg": "^8.11.5"
+  }
 }

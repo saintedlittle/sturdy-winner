@@ -1,10 +1,19 @@
 {
-  "name": "saintedlittle-frontend",
-  "version": "0.0.0",
-  "private": true,
+  "name": "sturdy-winner",
+  "version": "1.0.0",
+  "description": "Express web server for a game application",
+  "main": "index.js",
   "scripts": {
-    "start": "node ./bin/www"
+    "start": "node index.js"
   },
+  "keywords": [
+    "express",
+    "node",
+    "game",
+    "web-server"
+  ],
+  "author": "saintedlittle",
+  "license": "MIT",
   "dependencies": {
     "cookie-parser": "~1.4.4",
     "debug": "~2.6.9",

@@ -1,9 +1,16 @@
 <!DOCTYPE html>
 <html data-bs-theme="light" lang="en">
 
-<%- include('include/head.ejs'); %>
+<%- include('../include/head.ejs'); %>
 <body>
-<%- include('include/header.ejs'); %>
+<%- include('../include/header.ejs'); %>
+
+    <% if (error) { %>
+        <% alert %>
+
+        var myAlert = document.getElementById('myAlert');
+        var bsAlert = new bootstrap.Alert(myAlert);
+    <% } %>
 
     <section class="py-5">
         <div class="container py-5">
@@ -40,7 +47,7 @@
             </div>
         </div>
     </section>
-    <%- include('include/footer.ejs'); %>
+    <%- include('../include/footer.ejs'); %>
 
 </body>
 

@@ -1,328 +1,480 @@
-const { Client } = require('pg');
-const { User, UserIPHistory, Ban, Mute, Warn } = require("dbDataType");
+const mysql = require('mysql');
 
-const client = new Client({
-    user: 'your_username',
+const connection = mysql.createConnection({
     host: 'your_host',
-    database: 'your_database',
+    user: 'your_username',
     password: 'your_password',
-    port: 5432, // or your PostgreSQL port
+    database: 'your_database'
 });
 
-client.connect();
+connection.connect(err => {
+    if (err) {
+        console.error('Error connecting to MySQL database:', err);
+        return;
+    }
+    console.log('Connected to MySQL database');
+});
+
+class User {
+    constructor(id, username, bonuses, lastLoginDate) {
+        this.id = id;
+        this.username = username;
+        this.bonuses = bonuses;
+        this.lastLoginDate = lastLoginDate;
+    }
+}
+
+class UserIPHistory {
+    constructor(ipAddress, loginDate) {
+        this.ipAddress = ipAddress;
+        this.loginDate = loginDate;
+    }
+}
+
+class Ban {
+    constructor(username, whoBanned, reason, startTime, endTime) {
+        this.username = username;
+        this.whoBanned = whoBanned;
+        this.reason = reason;
+        this.startTime = startTime;
+        this.endTime = endTime;
+    }
+}
+
+class Mute {
+    constructor(username, whoMuted, reason, startTime, endTime) {
+        this.username = username;
+        this.whoMuted = whoMuted;
+        this.reason = reason;
+        this.startTime = startTime;
+        this.endTime = endTime;
+    }
+}
+
+class Warn {
+    constructor(username, whoWarned, reason, startTime, endTime) {
+        this.username = username;
+        this.whoWarned = whoWarned;
+        this.reason = reason;
+        this.startTime = startTime;
+        this.endTime = endTime;
+    }
+}
 
 /* USER FUNCTIONS */
 
 async function loginWithEmailPassword(email, password) {
-    try {
+    return new Promise((resolve, reject) => {
         const query = `
             SELECT id, username, bonuses, lastLoginDate
             FROM users
-            WHERE email = $1 AND password = $2
+            WHERE email = ? AND password = ?
         `;
-        const values = [email, password];
-        const result = await client.query(query, values);
-
-        if (result.rows.length === 1) {
-            // Successful login
-            const userData = result.rows[0];
-            const user = new User(userData.id, userData.username, userData.bonuses, userData.lastLoginDate);
-            console.log('Login successful');
-            console.log('User ID:', user.id);
-            console.log('Username:', user.username);
-            console.log('Bonuses:', user.bonuses);
-            console.log('Last Login Date:', user.lastLoginDate);
-            return { user, success: true };
-        } else {
-            // Invalid credentials
-            console.log('Invalid email or password');
-            return { user: null, success: false };
-        }
-    } catch (error) {
-        console.error('Error during login:', error);
-        return { user: null, success: false };
-    }
+        connection.query(query, [email, password], (err, rows) => {
+            if (err) {
+                console.error('Error during login:', err);
+                resolve({ user: null, success: false });
+            } else if (rows.length === 1) {
+                const userData = rows[0];
+                const user = new User(userData.id, userData.username, userData.bonuses, userData.lastLoginDate);
+                console.log('Login successful');
+                console.log('User ID:', user.id);
+                console.log('Username:', user.username);
+                console.log('Bonuses:', user.bonuses);
+                console.log('Last Login Date:', user.lastLoginDate);
+                resolve({ user, success: true });
+            } else {
+                console.log('Invalid email or password');
+                resolve({ user: null, success: false });
+            }
+        });
+    });
 }
 
 async function createUser(email, username, password) {
-    try {
+    return new Promise((resolve, reject) => {
         const query = `
             INSERT INTO users (email, username, password)
-            VALUES ($1, $2, $3)
-            RETURNING id, username, bonuses, lastLoginDate
+            VALUES (?, ?, ?)
         `;
-        const values = [email, username, password];
-        const result = await client.query(query, values);
-
-        if (result.rows.length === 1) {
-            const userData = result.rows[0];
-            const user = new User(userData.id, userData.username, userData.bonuses, userData.lastLoginDate);
-            console.log('User created with ID:', user.id);
-            return { user, success: true };
-        } else {
-            console.log('Failed to create user');
-            return { user: null, success: false };
-        }
-    } catch (error) {
-        console.error('Error creating user:', error);
-        return { user: null, success: false };
-    }
+        connection.query(query, [email, username, password], (err, result) => {
+            if (err) {
+                console.error('Error creating user:', err);
+                resolve({ user: null, success: false });
+            } else {
+                console.log('User created with ID:', result.insertId);
+                const user = new User(result.insertId, username, 100, null);
+                resolve({ user, success: true });
+            }
+        });
+    });
 }
 
 async function changeAvatar(userId, avatarData) {
-    try {
+    return new Promise((resolve, reject) => {
         const query = `
             UPDATE users
-            SET avatar = $1
-            WHERE id = $2
-            RETURNING id, username, bonuses, lastLoginDate
+            SET avatar = ?
+            WHERE id = ?
         `;
-        const values = [avatarData, userId];
-        const result = await client.query(query, values);
-
-        if (result.rows.length === 1) {
-            const userData = result.rows[0];
-            const user = new User(userData.id, userData.username, userData.bonuses, userData.lastLoginDate);
-            console.log('Avatar updated for user ID:', userId);
-            return { user, success: true };
-        } else {
-            console.log('Failed to update avatar for user ID:', userId);
-            return { user: null, success: false };
-        }
-    } catch (error) {
-        console.error('Error changing avatar:', error);
-        return { user: null, success: false };
-    }
+        connection.query(query, [avatarData, userId], (err, result) => {
+            if (err) {
+                console.error('Error changing avatar:', err);
+                resolve({ success: false });
+            } else {
+                console.log('Avatar updated for user ID:', userId);
+                resolve({ success: true });
+            }
+        });
+    });
 }
 
 async function changePassword(userId, newPassword) {
-    try {
+    return new Promise((resolve, reject) => {
         const query = `
             UPDATE users
-            SET password = $1
-            WHERE id = $2
-            RETURNING id, username, bonuses, lastLoginDate
+            SET password = ?
+            WHERE id = ?
         `;
-        const values = [newPassword, userId];
-        const result = await client.query(query, values);
-
-        if (result.rows.length === 1) {
-            const userData = result.rows[0];
-            const user = new User(userData.id, userData.username, userData.bonuses, userData.lastLoginDate);
-            console.log('Password changed for user ID:', userId);
-            return { user, success: true };
-        } else {
-            console.log('Failed to change password for user ID:', userId);
-            return { user: null, success: false };
-        }
-    } catch (error) {
-        console.error('Error changing password:', error);
-        return { user: null, success: false };
-    }
+        connection.query(query, [newPassword, userId], (err, result) => {
+            if (err) {
+                console.error('Error changing password:', err);
+                resolve({ success: false });
+            } else {
+                console.log('Password changed for user ID:', userId);
+                resolve({ success: true });
+            }
+        });
+    });
 }
 
 async function changeUsername(userId, newUsername) {
-    try {
+    return new Promise((resolve, reject) => {
         const query = `
             UPDATE users
-            SET username = $1
-            WHERE id = $2
-            RETURNING id, username, bonuses, lastLoginDate
+            SET username = ?
+            WHERE id = ?
         `;
-        const values = [newUsername, userId];
-        const result = await client.query(query, values);
-
-        if (result.rows.length === 1) {
-            const userData = result.rows[0];
-            const user = new User(userData.id, userData.username, userData.bonuses, userData.lastLoginDate);
-            console.log('Username changed for user ID:', userId);
-            return { user, success: true };
-        } else {
-            console.log('Failed to change username for user ID:', userId);
-            return { user: null, success: false };
-        }
-    } catch (error) {
-        console.error('Error changing username:', error);
-        return { user: null, success: false };
-    }
+        connection.query(query, [newUsername, userId], (err, result) => {
+            if (err) {
+                console.error('Error changing username:', err);
+                resolve({ success: false });
+            } else {
+                console.log('Username changed for user ID:', userId);
+                resolve({ success: true });
+            }
+        });
+    });
 }
 
 /* GET FUNCTIONS */
-
 async function getUserIPHistory(userId) {
-    try {
+    return new Promise((resolve, reject) => {
         const query = `
-      SELECT ip_address, login_date
-      FROM user_ip_history
-      WHERE user_id = $1
-    `;
-        const values = [userId];
-        const result = await client.query(query, values);
-
-        return result.rows.map(row => new UserIPHistory(row.ip_address, row.login_date));
-    } catch (error) {
-        console.error('Error getting user IP history:', error);
-        return [];
-    }
+            SELECT ip_address, login_date
+            FROM user_ip_history
+            WHERE user_id = ?
+        `;
+        connection.query(query, [userId], (err, rows) => {
+            if (err) {
+                console.error('Error getting user IP history:', err);
+                resolve([]);
+            } else {
+                const userIPHistory = rows.map(row => new UserIPHistory(row.ip_address, row.login_date));
+                resolve(userIPHistory);
+            }
+        });
+    });
 }
 
 async function getUserBanList(userId) {
-    try {
+    return new Promise((resolve, reject) => {
         const query = `
-      SELECT username, who_banned, reason, startTime, endTime
-      FROM banlist
-      WHERE username IN (
-        SELECT username
-        FROM users
-        WHERE id = $1
-      )
-    `;
-        const values = [userId];
-        const result = await client.query(query, values);
-
-        return result.rows.map(row => new Ban(row.username, row.who_banned, row.reason, row.startTime, row.endTime));
-    } catch (error) {
-        console.error('Error getting user ban list:', error);
-        return [];
-    }
+            SELECT username, who_banned, reason, startTime, endTime
+            FROM banlist
+            WHERE username IN (
+                SELECT username
+                FROM users
+                WHERE id = ?
+            )
+        `;
+        connection.query(query, [userId], (err, rows) => {
+            if (err) {
+                console.error('Error getting user ban list:', err);
+                resolve([]);
+            } else {
+                const userBanList = rows.map(row => new Ban(row.username, row.who_banned, row.reason, row.startTime, row.endTime));
+                resolve(userBanList);
+            }
+        });
+    });
 }
 
 async function getUserMuteList(userId) {
-    try {
+    return new Promise((resolve, reject) => {
         const query = `
-      SELECT username, who_mutted, reason, startTime, endTime
-      FROM mutelist
-      WHERE username IN (
-        SELECT username
-        FROM users
-        WHERE id = $1
-      )
-    `;
-        const values = [userId];
-        const result = await client.query(query, values);
-
-        return result.rows.map(row => new Mute(row.username, row.who_mutted, row.reason, row.startTime, row.endTime));
-    } catch (error) {
-        console.error('Error getting user mute list:', error);
-        return [];
-    }
+            SELECT username, who_mutted, reason, startTime, endTime
+            FROM mutelist
+            WHERE username IN (
+                SELECT username
+                FROM users
+                WHERE id = ?
+            )
+        `;
+        connection.query(query, [userId], (err, rows) => {
+            if (err) {
+                console.error('Error getting user mute list:', err);
+                resolve([]);
+            } else {
+                const userMuteList = rows.map(row => new Mute(row.username, row.who_mutted, row.reason, row.startTime, row.endTime));
+                resolve(userMuteList);
+            }
+        });
+    });
 }
 
 async function getUserWarnList(userId) {
-    try {
+    return new Promise((resolve, reject) => {
         const query = `
-      SELECT username, who_warned, reason, startTime, endTime
-      FROM warnlist
-      WHERE username IN (
-        SELECT username
-        FROM users
-        WHERE id = $1
-      )
-    `;
-        const values = [userId];
-        const result = await client.query(query, values);
+            SELECT username, who_warned, reason, startTime, endTime
+            FROM warnlist
+            WHERE username IN (
+                SELECT username
+                FROM users
+                WHERE id = ?
+            )
+        `;
+        connection.query(query, [userId], (err, rows) => {
+            if (err) {
+                console.error('Error getting user warn list:', err);
+                resolve([]);
+            } else {
+                const userWarnList = rows.map(row => new Warn(row.username, row.who_warned, row.reason, row.startTime, row.endTime));
+                resolve(userWarnList);
+            }
+        });
+    });
+}
 
-        return result.rows.map(row => new Warn(row.username, row.who_warned, row.reason, row.startTime, row.endTime));
-    } catch (error) {
-        console.error('Error getting user warn list:', error);
-        return [];
-    }
+/* Получить объект наказания по id. */
+async function getObjectById(table, id) {
+    return new Promise((resolve, reject) => {
+        const query = `
+            SELECT *
+            FROM ${table}
+            WHERE id = ?
+        `;
+        connection.query(query, [id], (err, rows) => {
+            if (err) {
+                console.error(`Error getting object from ${table} by ID:`, err);
+                resolve(null);
+            } else {
+                if (rows.length === 1) {
+                    resolve(rows[0]);
+                } else {
+                    resolve(null);
+                }
+            }
+        });
+    });
+}
+
+/* Получить последний объект наказания. */
+async function getLastObject(table) {
+    return new Promise((resolve, reject) => {
+        const query = `
+            SELECT *
+            FROM ${table}
+            ORDER BY id DESC
+            LIMIT 1
+        `;
+        connection.query(query, (err, rows) => {
+            if (err) {
+                console.error(`Error getting last object from ${table}:`, err);
+                resolve(null);
+            } else {
+                if (rows.length === 1) {
+                    resolve(rows[0]);
+                } else {
+                    resolve(null);
+                }
+            }
+        });
+    });
 }
 
 /* ADD FUNCTIONS */
 
 async function addBan(ban) {
-    try {
+    return new Promise((resolve, reject) => {
         const query = `
             INSERT INTO banlist (username, who_banned, reason, startTime, endTime)
-            VALUES ($1, $2, $3, $4, $5)
+            VALUES (?, ?, ?, ?, ?)
         `;
-        const values = [ban.username, ban.whoBanned, ban.reason, ban.startTime, ban.endTime];
-        await client.query(query, values);
-        console.log('Ban added for username:', ban.username);
-        return { ban, success: true };
-    } catch (error) {
-        console.error('Error adding ban:', error);
-        return { ban: null, success: false };
-    }
+        const { username, whoBanned, reason, startTime, endTime } = ban;
+        connection.query(query, [username, whoBanned, reason, startTime, endTime], (err, result) => {
+            if (err) {
+                console.error('Error adding ban:', err);
+                resolve({ success: false });
+            } else {
+                console.log('Ban added for username:', username);
+                resolve({ success: true });
+            }
+        });
+    });
 }
 
 async function addMute(mute) {
-    try {
+    return new Promise((resolve, reject) => {
         const query = `
             INSERT INTO mutelist (username, who_mutted, reason, startTime, endTime)
-            VALUES ($1, $2, $3, $4, $5)
+            VALUES (?, ?, ?, ?, ?)
         `;
-        const values = [mute.username, mute.whoMuted, mute.reason, mute.startTime, mute.endTime];
-        await client.query(query, values);
-        console.log('Mute added for username:', mute.username);
-        return { mute, success: true };
-    } catch (error) {
-        console.error('Error adding mute:', error);
-        return { mute: null, success: false };
-    }
+        const { username, whoMuted, reason, startTime, endTime } = mute;
+        connection.query(query, [username, whoMuted, reason, startTime, endTime], (err, result) => {
+            if (err) {
+                console.error('Error adding mute:', err);
+                resolve({ success: false });
+            } else {
+                console.log('Mute added for username:', username);
+                resolve({ success: true });
+            }
+        });
+    });
 }
 
 async function addWarn(warn) {
-    try {
+    return new Promise((resolve, reject) => {
         const query = `
             INSERT INTO warnlist (username, who_warned, reason, startTime, endTime)
-            VALUES ($1, $2, $3, $4, $5)
+            VALUES (?, ?, ?, ?, ?)
         `;
-        const values = [warn.username, warn.whoWarned, warn.reason, warn.startTime, warn.endTime];
-        await client.query(query, values);
-        console.log('Warn added for username:', warn.username);
-        return { warn, success: true };
-    } catch (error) {
-        console.error('Error adding warn:', error);
-        return { warn: null, success: false };
-    }
+        const { username, whoWarned, reason, startTime, endTime } = warn;
+        connection.query(query, [username, whoWarned, reason, startTime, endTime], (err, result) => {
+            if (err) {
+                console.error('Error adding warn:', err);
+                resolve({ success: false });
+            } else {
+                console.log('Warn added for username:', username);
+                resolve({ success: true });
+            }
+        });
+    });
 }
 
-async function removeBan(username) {
-    try {
-        const query = `
-            DELETE FROM banlist
-            WHERE username = $1
-        `;
-        const values = [username];
-        await client.query(query, values);
-        console.log('Ban removed for username:', username);
-        return { success: true };
-    } catch (error) {
-        console.error('Error removing ban:', error);
-        return { success: false };
-    }
+async function removeBan(identifier) {
+    return new Promise((resolve, reject) => {
+        let query;
+        let values;
+        if (Number.isInteger(identifier)) {
+            // Удалить запись по ID
+            query = `
+                DELETE FROM banlist
+                WHERE id = ?
+            `;
+            values = [identifier];
+        } else {
+            // Удалить самую последнюю запись
+            query = `
+                DELETE FROM banlist
+                WHERE id = (
+                    SELECT MAX(id) FROM banlist
+                )
+            `;
+            values = [];
+        }
+        connection.query(query, values, (err, result) => {
+            if (err) {
+                console.error('Error removing ban:', err);
+                resolve({ success: false });
+            } else {
+                console.log('Ban removed');
+                resolve({ success: true });
+            }
+        });
+    });
 }
 
-async function removeMute(username) {
-    try {
-        const query = `
-            DELETE FROM mutelist
-            WHERE username = $1
-        `;
-        const values = [username];
-        await client.query(query, values);
-        console.log('Mute removed for username:', username);
-        return { success: true };
-    } catch (error) {
-        console.error('Error removing mute:', error);
-        return { success: false };
-    }
+async function removeMute(identifier) {
+    return new Promise((resolve, reject) => {
+        let query;
+        let values;
+        if (Number.isInteger(identifier)) {
+            // Удалить запись по ID
+            query = `
+                DELETE FROM mutelist
+                WHERE id = ?
+            `;
+            values = [identifier];
+        } else {
+            // Удалить самую последнюю запись
+            query = `
+                DELETE FROM mutelist
+                WHERE id = (
+                    SELECT MAX(id) FROM mutelist
+                )
+            `;
+            values = [];
+        }
+        connection.query(query, values, (err, result) => {
+            if (err) {
+                console.error('Error removing mute:', err);
+                resolve({ success: false });
+            } else {
+                console.log('Mute removed');
+                resolve({ success: true });
+            }
+        });
+    });
 }
 
-async function removeWarn(username) {
-    try {
-        const query = `
-            DELETE FROM warnlist
-            WHERE username = $1
-        `;
-        const values = [username];
-        await client.query(query, values);
-        console.log('Warn removed for username:', username);
-        return { success: true };
-    } catch (error) {
-        console.error('Error removing warn:', error);
-        return { success: false };
-    }
+async function removeWarn(identifier) {
+    return new Promise((resolve, reject) => {
+        let query;
+        let values;
+        if (Number.isInteger(identifier)) {
+            // Удалить запись по ID
+            query = `
+                DELETE FROM warnlist
+                WHERE id = ?
+            `;
+            values = [identifier];
+        } else {
+            // Удалить самую последнюю запись
+            query = `
+                DELETE FROM warnlist
+                WHERE id = (
+                    SELECT MAX(id) FROM warnlist
+                )
+            `;
+            values = [];
+        }
+        connection.query(query, values, (err, result) => {
+            if (err) {
+                console.error('Error removing warn:', err);
+                resolve({ success: false });
+            } else {
+                console.log('Warn removed');
+                resolve({ success: true });
+            }
+        });
+    });
 }
+
+module.exports = {
+    loginWithEmailPassword,
+    removeBan,
+    removeWarn,
+    removeMute,
+    addBan,
+    addMute,
+    addWarn,
+    createUser,
+    changeAvatar,
+    changePassword,
+    changeUsername,
+    getUserIPHistory,
+    getUserBanList,
+    getUserMuteList,
+    getUserWarnList
+};

@@ -2,12 +2,14 @@
     Добавить алерт можно с помощью:
     var myAlert = document.getElementById('myAlert');
     var bsAlert = new bootstrap.Alert(myAlert);
+
+    alertType -> danger success warning
  */
-function alertGenerator(headingText, bodyText) {
+function alertGenerator(alertType, headingText, bodyText) {
     try {
         const { JSDOM } = require('jsdom');
         const htmlTemplate = `
-            <div class="alert alert-success" role="alert" id="myAlert">
+            <div class="alert alert-${alertType}" role="alert" id="myAlert">
                 <h4 class="alert-heading">${headingText}</h4>
                 <p>${bodyText}</p>
                 <button class="btn-close btn-primary" data-bs-dismiss="alert">Прочитано</a>

@@ -1,5 +1,6 @@
 const createError = require('http-errors');
 const express = require('express');
+const session = require('express-session');
 const path = require('path');
 const cookieParser = require('cookie-parser');
 const logger = require('morgan');
@@ -7,6 +8,8 @@ const logger = require('morgan');
 const app = express();
 
 setup_server();
+setup_session();
+
 setup_routes();
 setup_errors();
 
@@ -19,6 +22,15 @@ function setup_server() {
   app.use(express.urlencoded({ extended: false }));
   app.use(cookieParser());
   app.use(express.static(path.join(__dirname, 'public')));
+}
+
+function setup_session() {
+  app.use(session({
+    secret: "In th£ mµrd£røµs r£alms øf th£ d££p £ñd myst£rïøµs Ämåzøn båsïn, c£rul£ånç £mprïs£d wïthïñ th£ bråñçh£s øf mïghty tr££s äñd thrøµgh thïçk mål£strøm, th£ wïñd sµbsíd£s tö whïsph£r th£ wörds øf ancï£nt mystïçål ëñçhåñtµm£ñts, wøv£n fröm th£ søµnds øf bïrd söngs åñd th£ rustlïñg øf åñïmål$ ïñ th£ glïmm£rïñg måøñlïght.",
+    resave: false,
+    saveUninitialized: true,
+    rolling: true,
+  }));
 }
 
 function setup_routes() {
